@@ -1,0 +1,337 @@
+---
+import "./../styles/global.css";
+// Si usas astro-icon o @lucide/astro puedes importar tus íconos aquí
+// Import de ejemplo común en Astro:
+import { Icon } from "astro-icon/components";
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Configuración de Traefik v3.6 | Portafolio</title>
+    <meta
+      name="description"
+      content="Guía completa para configurar Traefik v3.6 como proxy inverso en Docker para desarrollo local y producción."
+    />
+  </head>
+  <body class="bg-zinc-950 text-zinc-100 min-h-screen antialiased selection:bg-cyan-500 selection:text-black">
+    
+    <!-- Encabezado / Navegación -->
+    <header class="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur sticky top-0 z-50">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-2 text-zinc-300 hover:text-white transition-colors font-medium text-sm">
+          <Icon name="lucide:arrow-left" class="w-4 h-4" />
+          <span>Volver al inicio</span>
+        </a>
+        <div class="flex items-center gap-3 text-xs text-zinc-400">
+          <span class="px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
+            DevOps
+          </span>
+          <span>•</span>
+          <time datetime="2026-10-16">Octubre 2026</time>
+        </div>
+      </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+      <article class="prose prose-invert max-w-none">
+        
+        <!-- Header del artículo -->
+        <header class="mb-10 pb-8 border-b border-zinc-800">
+          <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-4">
+            Configuración de Traefik v3.6 <span class="text-cyan-400">(Desarrollo local y producción)</span>
+          </h1>
+          <p class="text-lg text-zinc-400 leading-relaxed">
+            Este repositorio contiene la configuración base para desplegar <strong class="text-zinc-200">Traefik v3.6</strong> como proxy inverso mediante Docker. Está diseñado para funcionar tanto en un entorno de desarrollo local como en un servidor VPS de producción, permitiendo gestionar el acceso a diferentes aplicaciones y habilitar conexiones HTTPS mediante certificados de Let's Encrypt.
+          </p>
+        </header>
+
+        <!-- Sección 1 -->
+        <section class="mb-12">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Icon name="lucide:check-square" class="w-6 h-6 text-cyan-400" />
+            1. Requisitos previos
+          </h2>
+          <p class="text-zinc-300 mb-4">
+            Antes de iniciar, asegúrate de tener instalados los siguientes componentes:
+          </p>
+          <ul class="list-disc list-inside space-y-2 text-zinc-300 mb-6 pl-2">
+            <li><strong class="text-white">Docker:</strong> para ejecutar los contenedores.</li>
+            <li><strong class="text-white">Docker Compose:</strong> para definir y administrar los servicios.</li>
+            <li><strong class="text-white">Traefik v3.6:</strong> configurado mediante el archivo <code class="text-cyan-300 bg-zinc-900 px-1.5 py-0.5 rounded text-sm font-mono">docker-compose.yml</code>.</li>
+          </ul>
+          <p class="text-zinc-300 mb-4">
+            Además, es necesario crear una red externa de Docker que permita la comunicación entre Traefik y las aplicaciones que se publicarán a través del proxy.
+          </p>
+          <p class="text-zinc-300 mb-2">Ejecuta el siguiente comando:</p>
+          <pre class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-cyan-300 overflow-x-auto">docker network create web</pre>
+          <p class="text-zinc-400 text-sm mt-2">Esta red se utilizará para conectar Traefik con los contenedores de las aplicaciones.</p>
+        </section>
+
+        <!-- Sección 2 -->
+        <section class="mb-12">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Icon name="lucide:shield-check" class="w-6 h-6 text-cyan-400" />
+            2. Preparación del archivo de certificados SSL/TLS
+          </h2>
+          <p class="text-zinc-300 mb-4">
+            Traefik utiliza Let's Encrypt para obtener y renovar automáticamente los certificados SSL/TLS. Para almacenar la información de estos certificados, se utiliza el archivo <code class="text-cyan-300 bg-zinc-900 px-1.5 py-0.5 rounded text-sm font-mono">acme.json</code>.
+          </p>
+          
+          <h3 class="text-lg font-semibold text-zinc-200 mt-6 mb-2">Crear el archivo</h3>
+          <p class="text-zinc-300 mb-2">Desde la raíz del proyecto, ejecuta:</p>
+          <pre class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-cyan-300 overflow-x-auto mb-6">touch acme.json</pre>
+
+          <h3 class="text-lg font-semibold text-zinc-200 mb-2">Configurar los permisos</h3>
+          <p class="text-zinc-300 mb-2">Por motivos de seguridad, Traefik requiere que este archivo tenga permisos restrictivos. Configúralos con el siguiente comando:</p>
+          <pre class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-cyan-300 overflow-x-auto mb-4">chmod 600 acme.json</pre>
+          <p class="text-zinc-400 text-sm mb-6">Estos permisos permiten que únicamente el propietario del archivo pueda leerlo y modificarlo.</p>
+
+          <div class="bg-amber-500/10 border-l-4 border-amber-500 p-4 rounded-r-lg mb-6">
+            <p class="text-amber-200 text-sm font-medium">
+              <strong>Importante:</strong> El archivo <code class="font-mono bg-amber-950/60 px-1 rounded">acme.json</code> contiene información sensible relacionada con los certificados y las claves privadas. Nunca lo subas a un repositorio público ni lo compartas con terceros.
+            </p>
+          </div>
+
+          <p class="text-zinc-300 mb-2">Para evitar que Git lo incluya en los commits, agrega lo siguiente a tu archivo <code class="text-cyan-300 bg-zinc-900 px-1.5 py-0.5 rounded text-sm font-mono">.gitignore</code>:</p>
+          <pre class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-cyan-300 overflow-x-auto mb-4">acme.json</pre>
+
+          <p class="text-zinc-300 mb-2">Si el archivo ya estaba siendo rastreado por Git, tendrás que dejar de rastrearlo antes de que esta regla tenga efecto:</p>
+          <pre class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-cyan-300 overflow-x-auto mb-2">git rm --cached acme.json</pre>
+          <p class="text-zinc-400 text-sm">Este comando elimina el archivo del seguimiento de Git, pero conserva el archivo local.</p>
+        </section>
+
+        <!-- Sección 3 -->
+        <section class="mb-12">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Icon name="lucide:sliders" class="w-6 h-6 text-cyan-400" />
+            3. Configuración de los entornos
+          </h2>
+          <p class="text-zinc-300 mb-6">El proyecto está preparado para utilizarse en dos escenarios: desarrollo local y producción.</p>
+
+          <!-- 3.1 -->
+          <div class="mb-8">
+            <h3 class="text-xl font-bold text-zinc-100 mb-3">3.1. Entorno local</h3>
+            <p class="text-zinc-300 mb-4">
+              En el entorno local, Traefik permite probar la configuración y verificar el funcionamiento del proxy sin necesidad de publicar las aplicaciones en Internet.
+            </p>
+            <p class="text-zinc-300 mb-2">Los accesos configurados son:</p>
+            <ul class="list-disc list-inside space-y-2 text-zinc-300 mb-4 pl-2 font-mono text-sm">
+              <li>Dashboard de Traefik: <span class="text-cyan-400">http://localhost:8081</span></li>
+              <li>Puerto web: <span class="text-cyan-400">http://localhost:8002</span></li>
+            </ul>
+            <p class="text-zinc-400 text-sm mb-4">
+              Estas direcciones corresponden a los puertos publicados en el archivo <code class="text-cyan-300 bg-zinc-900 px-1.5 py-0.5 rounded font-mono">docker-compose.yml</code>. Si modificas la configuración, las direcciones también pueden cambiar.
+            </p>
+
+            <blockquote class="border-l-4 border-cyan-500 bg-zinc-900/60 p-4 rounded-r-lg text-zinc-300 text-sm italic">
+              <strong>Recomendación:</strong> utiliza el dashboard únicamente en entornos de confianza. No lo expongas públicamente sin configurar los mecanismos de autenticación y protección adecuados.
+            </blockquote>
+          </div>
+
+          <!-- 3.2 -->
+          <div>
+            <h3 class="text-xl font-bold text-zinc-100 mb-3">3.2. Entorno de producción (VPS)</h3>
+            <p class="text-zinc-300 mb-6">
+              Para desplegar Traefik en un servidor VPS y habilitar HTTPS, es necesario adaptar el archivo <code class="text-cyan-300 bg-zinc-900 px-1.5 py-0.5 rounded text-sm font-mono">docker-compose.yml</code> a las condiciones del entorno de producción.
+            </p>
+
+            <div class="space-y-6">
+              <div>
+                <h4 class="font-bold text-white text-base mb-2">Paso 1. Configurar la redirección HTTP a HTTPS</h4>
+                <p class="text-zinc-300 text-sm leading-relaxed">
+                  En la configuración del punto de entrada <code class="text-cyan-300 bg-zinc-900 px-1 rounded font-mono">web</code>, habilita la redirección hacia <code class="text-cyan-300 bg-zinc-900 px-1 rounded font-mono">websecure</code>. Esto permite que las solicitudes recibidas mediante HTTP se redirijan a HTTPS.
+                </p>
+              </div>
+
+              <div>
+                <h4 class="font-bold text-white text-base mb-2">Paso 2. Configurar Let's Encrypt</h4>
+                <p class="text-zinc-300 text-sm mb-3">
+                  Habilita la sección <code class="text-cyan-300 bg-zinc-900 px-1 rounded font-mono">certificatesresolvers</code> y configura el proveedor ACME para obtener certificados automáticamente. Sustituye el correo de ejemplo por una dirección válida:
+                </p>
+                <pre class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-cyan-300 overflow-x-auto">certificatesResolvers:
+  myresolver:
+    acme:
+      email: tu-email@correo.com
+      storage: /acme.json
+      httpChallenge:
+        entryPoint: web</pre>
+                <p class="text-zinc-400 text-xs mt-2">
+                  Para que el desafío HTTP-01 funcione, el dominio debe apuntar al servidor y el puerto 80 debe ser accesible desde Internet.
+                </p>
+              </div>
+
+              <div>
+                <h4 class="font-bold text-white text-base mb-2">Paso 3. Verificar los puertos</h4>
+                <p class="text-zinc-300 text-sm mb-2">
+                  Comprueba que los puertos 80 y 443 estén disponibles en el VPS y que el firewall permita el tráfico correspondiente:
+                </p>
+                <ul class="list-disc list-inside space-y-1 text-zinc-300 text-sm pl-2">
+                  <li><strong class="text-white">Puerto 80:</strong> recepción de solicitudes HTTP y validación HTTP-01.</li>
+                  <li><strong class="text-white">Puerto 443:</strong> recepción de conexiones HTTPS.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 class="font-bold text-white text-base mb-2">Paso 4. Configurar los DNS</h4>
+                <p class="text-zinc-300 text-sm">
+                  Crea un registro de tipo <code class="text-cyan-300 bg-zinc-900 px-1 rounded font-mono">A</code> que apunte el dominio a la dirección IPv4 pública del VPS (o <code class="text-cyan-300 bg-zinc-900 px-1 rounded font-mono">AAAA</code> para IPv6).
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección 4 -->
+        <section class="mb-12">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Icon name="lucide:box" class="w-6 h-6 text-cyan-400" />
+            4. Publicación de nuevas aplicaciones
+          </h2>
+          <p class="text-zinc-300 mb-4">
+            Traefik puede detectar automáticamente los contenedores Docker y dirigir el tráfico hacia ellos mediante routers y servicios. Cada aplicación debe cumplir con:
+          </p>
+          <ol class="list-decimal list-inside space-y-2 text-zinc-300 mb-6 pl-2 text-sm">
+            <li>Estar conectada a la red Docker <code class="text-cyan-300 bg-zinc-900 px-1 rounded font-mono">web</code>.</li>
+            <li>Tener habilitada la integración con Traefik mediante etiquetas.</li>
+            <li>Definir un router con la regla de dominio correspondiente.</li>
+            <li>Indicar el punto de entrada y el mecanismo TLS.</li>
+            <li>Especificar el puerto interno si no es detectado automáticamente.</li>
+          </ol>
+
+          <h3 class="text-lg font-semibold text-zinc-200 mb-3">Ejemplo de configuración</h3>
+          <pre class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-emerald-400 overflow-x-auto mb-4">services:
+  mi-app:
+    image: nginx:alpine
+    container_name: mi-app
+    restart: unless-stopped
+
+    networks:
+      - web
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mi-app.rule=Host(`tudominio.com`)"
+      - "traefik.http.routers.mi-app.entrypoints=websecure"
+      - "traefik.http.routers.mi-app.tls=true"
+      - "traefik.http.routers.mi-app.tls.certresolver=myresolver"
+      - "traefik.http.services.mi-app.loadbalancer.server.port=80"
+
+networks:
+  web:
+    external: true</pre>
+        </section>
+
+        <!-- Sección 5 -->
+        <section class="mb-12">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Icon name="lucide:network" class="w-6 h-6 text-cyan-400" />
+            5. Arquitectura del sistema
+          </h2>
+          <p class="text-zinc-300 mb-4">El flujo de comunicación en producción funciona de la siguiente manera:</p>
+          <pre class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-xs sm:text-sm text-cyan-300 overflow-x-auto leading-tight">
+                  INTERNET
+                     |
+                     v
+              Dominio y DNS
+                     |
+                     v
+                Servidor VPS
+                     |
+                     v
+               Puertos 80/443
+                     |
+                     v
+              +--------------+
+              |   Traefik    |
+              | Proxy inverso|
+              +--------------+
+                     |
+              Red Docker "web"
+                /    |    \
+               v     v     v
+            App 1  App 2  App 3</pre>
+        </section>
+
+        <!-- Sección 6 -->
+        <section class="mb-12">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Icon name="lucide:terminal" class="w-6 h-6 text-cyan-400" />
+            6. Supervisión y depuración
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg">
+              <h4 class="font-bold text-white text-sm mb-1">Logs en tiempo real</h4>
+              <pre class="text-xs font-mono text-cyan-300 bg-zinc-950 p-2 rounded mt-2">docker logs -f traefik</pre>
+            </div>
+            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg">
+              <h4 class="font-bold text-white text-sm mb-1">Estado de contenedores</h4>
+              <pre class="text-xs font-mono text-cyan-300 bg-zinc-950 p-2 rounded mt-2">docker compose ps</pre>
+            </div>
+            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg">
+              <h4 class="font-bold text-white text-sm mb-1">Revisar Compose</h4>
+              <pre class="text-xs font-mono text-cyan-300 bg-zinc-950 p-2 rounded mt-2">docker compose config</pre>
+            </div>
+            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg">
+              <h4 class="font-bold text-white text-sm mb-1">Comprobar red Docker</h4>
+              <pre class="text-xs font-mono text-cyan-300 bg-zinc-950 p-2 rounded mt-2">docker network inspect web</pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección 7 -->
+        <section class="mb-12">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Icon name="lucide:lock" class="w-6 h-6 text-cyan-400" />
+            7. Consideraciones de seguridad
+          </h2>
+          <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-zinc-300">
+            <li class="bg-zinc-900/40 p-3 rounded border border-zinc-800/80">🔒 <strong>Proteger acme.json:</strong> no subir a GitHub ni en Docker images.</li>
+            <li class="bg-zinc-900/40 p-3 rounded border border-zinc-800/80">🚫 <strong>Restringir Dashboard:</strong> no exponer sin autenticación.</li>
+            <li class="bg-zinc-900/40 p-3 rounded border border-zinc-800/80">🌐 <strong>Utilizar HTTPS:</strong> siempre con certificados válidos.</li>
+            <li class="bg-zinc-900/40 p-3 rounded border border-zinc-800/80">🧱 <strong>Proteger puertos:</strong> limitar tráfico vía firewall VPS.</li>
+          </ul>
+        </section>
+
+        <!-- Sección 8 -->
+        <section class="mb-12">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Icon name="lucide:play-circle" class="w-6 h-6 text-cyan-400" />
+            8. Puesta en marcha
+          </h2>
+          <p class="text-zinc-300 mb-2">Para iniciar los servicios en segundo plano:</p>
+          <pre class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-cyan-300 overflow-x-auto mb-4">docker compose up -d</pre>
+        </section>
+
+        <!-- Conclusión -->
+        <footer class="pt-8 border-t border-zinc-800">
+          <h2 class="text-xl font-bold text-white mb-3">Conclusión</h2>
+          <p class="text-zinc-400 leading-relaxed text-sm">
+            Este repositorio proporciona una base sólida para desplegar Traefik v3.6 como proxy inverso en entornos de desarrollo y producción. Centraliza el enrutamiento y la administración de SSL/TLS simplificando la infraestructura de microservicios o aplicaciones compuestas en Docker.
+          </p>
+        </footer>
+
+      </article>
+    </main>
+
+    <!-- Pie de página de la web -->
+    <footer class="border-t border-zinc-800/80 py-8 mt-12 bg-zinc-950">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center text-xs text-zinc-500">
+        <p>© 2026 Andrés Barrera Cortés. Todos los derechos reservados.</p>
+      </div>
+    </footer>
+
+  </body>
+</html>
+
+<style>
+  html {
+    scroll-behavior: smooth;
+  }
+</style>
